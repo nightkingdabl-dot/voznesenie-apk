@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -29,7 +30,7 @@ jobs:
             "platforms;android-34" \
             "build-tools;34.0.0"
 
-      - name: Install Godot
+      - name: Install Godot 4.3
         run: |
           wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
           unzip -q Godot_v4.3-stable_linux.x86_64.zip
@@ -39,14 +40,17 @@ jobs:
       - name: Install Godot export templates
         run: |
           mkdir -p ~/.local/share/godot/export_templates/4.3.stable
-          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
-          unzip -q Godot_v4.3-stable_export_templates.tpz -d /tmp/godot_templates
-          cp -r /tmp/godot_templates/templates/* ~/.local/share/godot/export_templates/4.3.stable/
 
-      - name: Configure Android
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+
+          unzip -q Godot_v4.3-stable_export_templates.tpz -d /tmp/godot_templates
+
+          cp -r /tmp/godot_templates/templates/* \
+            ~/.local/share/godot/export_templates/4.3.stable/
+
+      - name: Configure Android export
         run: |
-          mkdir -p android
-          cat > android/export_presets.cfg <<'EOF'
+          cat > export_presets.cfg <<'EOF'
           [preset.0]
 
           name="Android"
@@ -64,22 +68,40 @@ jobs:
 
           custom_template/debug=""
           custom_template/release=""
+
           gradle_build/use_gradle_build=false
+
           architecture/arm64-v8a=true
           architecture/armeabi-v7a=false
+
           package/unique_name="com.vosnesenie.game"
           package/name="Vosnesenie"
-          package/signed=true
+
           version/code=1
           version/name="0.2.0"
+
           screen/orientation=1
           EOF
+
+      - name: Check Godot project
+        run: |
+          godot --headless --path . --editor --quit
 
       - name: Build APK
         run: |
           mkdir -p build
-          godot --headless --path . --editor --quit
-          godot --headless --path . --export-debug "Android" build/Vosnesenie.apk
+
+          godot \
+            --headless \
+            --path . \
+            --export-debug \
+            "Android" \
+            build/Vosnesenie.apk
+
+      - name: Check APK
+        run: |
+          ls -lh build/
+          test -f build/Vosnesenie.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
