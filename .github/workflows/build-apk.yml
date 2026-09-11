@@ -43,10 +43,24 @@ jobs:
 
           wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
 
-          unzip -q Godot_v4.3-stable_export_templates.tpz -d /tmp/godot_templates
+          unzip -q Godot_v4.3-stable_export_templates.tpz \
+            -d /tmp/godot_templates
 
           cp -r /tmp/godot_templates/templates/* \
             ~/.local/share/godot/export_templates/4.3.stable/
+
+      - name: Create debug keystore
+        run: |
+          keytool -genkeypair \
+            -v \
+            -keystore "$GITHUB_WORKSPACE/debug.keystore" \
+            -alias androiddebugkey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Configure Android export
         run: |
@@ -63,6 +77,10 @@ jobs:
           include_filter=""
           exclude_filter=""
           export_path="build/Vosnesenie.apk"
+          encryption_include_filters=""
+          encryption_exclude_filters=""
+          encrypt_pck=false
+          encrypt_directory=false
 
           [preset.0.options]
 
@@ -70,18 +88,61 @@ jobs:
           custom_template/release=""
 
           gradle_build/use_gradle_build=false
+          gradle_build/export_format=0
+          gradle_build/min_sdk=""
+          gradle_build/target_sdk=""
 
-          architecture/arm64-v8a=true
-          architecture/armeabi-v7a=false
+          architectures/armeabi-v7a=false
+          architectures/arm64-v8a=true
+          architectures/x86=false
+          architectures/x86_64=false
 
-          package/unique_name="com.vosnesenie.game"
-          package/name="Vosnesenie"
+          keystore/debug=""
+          keystore/debug_user=""
+          keystore/debug_password=""
+
+          keystore/release=""
+          keystore/release_user=""
+          keystore/release_password=""
 
           version/code=1
           version/name="0.2.0"
 
-          screen/orientation=1
+          package/unique_name="com.vosnesenie.game"
+          package/name="Vosnesenie"
+          package/signed=true
+          package/app_category=2
+          package/retain_data_on_uninstall=false
+          package/exclude_from_recents=false
+          package/show_in_android_tv=false
+          package/show_in_app_library=true
+          package/show_as_launcher_app=false
+
+          launcher_icons/main_192x192=""
+          launcher_icons/adaptive_foreground_432x432=""
+          launcher_icons/adaptive_background_432x432=""
+
+          graphics/opengl_debug=false
+          xr_features/xr_mode=0
+
+          screen/immersive_mode=true
+          screen/support_small=true
+          screen/support_normal=true
+          screen/support_large=true
+          screen/support_xlarge=true
           EOF
+
+      - name: Configure Godot Android environment
+        run: |
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$GITHUB_WORKSPACE/debug.keystore" >> $GITHUB_ENV
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> $GITHUB_ENV
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> $GITHUB_ENV
+
+      - name: Check export preset
+        run: |
+          echo "===== export_presets.cfg ====="
+          cat export_presets.cfg
+          echo "=============================="
 
       - name: Check Godot project
         run: |
@@ -100,8 +161,10 @@ jobs:
 
       - name: Check APK
         run: |
+          echo "===== BUILD RESULT ====="
           ls -lh build/
           test -f build/Vosnesenie.apk
+          echo "APK successfully created!"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
